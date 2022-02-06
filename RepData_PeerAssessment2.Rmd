@@ -1,0 +1,114 @@
+---
+title: 'Reproducible Research: Peer Assessment 2'
+author: "Hector Mario Romer"
+date: "2/5/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Load 
+
+```{r load_data, cache = TRUE}
+# suppressMessages(library(readr))
+# suppressMessages(library(dplyr))
+# suppressMessages(library(ggplot2))
+# 
+# bz_file <- "repdata_data_StormData.csv.bz2"
+# if (!file.exists(bz_file)) {
+#         download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", bz_file)
+# }
+# 
+# storm_data <- read_csv(bzfile(bz_file), show_col_types = FALSE) %>%
+#         mutate(EVTYPE = as.factor(EVTYPE))
+```
+
+#### Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+By looking at the data documentation, I used the variables FATALITIES and INJURIES to calculate total people whose health was affected by the event. I grouped the information by event type (EVTYPE) and assigned the sum of the variables FATALITIES and INJURIES to a new variable named "TOTAL". 
+
+The resulting dataset, **health_damage**, is then arranged by *TOTAL* in descending order. 
+
+```{r}
+health_damage <- storm_data %>% 
+        group_by(EVTYPE) %>% 
+        summarise(TOTAL = sum(FATALITIES) + sum(INJURIES)) %>%
+        arrange(desc(TOTAL))
+```
+
+List the 10 most harmful type of events with respect to population health.
+
+```{r}
+head(health_damage, 10)
+```
+
+
+```{r}
+p <- ggplot(head(health_damage, 10), aes(x = EVTYPE, y = TOTAL)) +
+        geom_bar(stat="identity") +
+        theme_bw() +
+        labs(x = "Event type", y = "Total")
+print(p)
+```
+
+To measure economic consequences, I used the variables *PROPDMG* and *PROPDMGEXP* total money loss in dollars caused by the event. I grouped the information by event type (EVTYPE) and assigned the sum of the variables FATALITIES and INJURIES to a variable named "TOTAL". 
+
+The resulting dataset, **economic_damage**, is then arranged by *total* in descending order. 
+
+
+
+```{r}
+
+get_dmg_exp <- function(value){
+        value <- as.character(value)
+        
+        if (value %in% c("h", "H")) {
+                dmg_exp <- 100        
+        } else if (value %in% c("k", "K")){
+                dmg_exp <- 1000
+        } else if (value %in% c("m", "M")){
+                dmg_exp <- 1000000
+        } else if (value %in% c("b", "B")){
+                dmg_exp <- 1000000000
+        } else if (value %in% as.character(seq(0:8))){
+                dmg_exp <- 10
+        } else if (value %in% c("+")) {
+                dmg_exp <- 1
+        } else {
+                dmg_exp <- 0
+        }  
+        
+        dmg_exp
+}
+set.seed(1307)
+sample <- sample(1:nrow(storm_data), 10000)
+storm_data2 <- storm_data[sample,]
+total_loss <- numeric(nrow(storm_data2))
+for (row in 1:length(total_loss)) {
+        total_loss[row] <- as.numeric(storm_data2[row, "PROPDMG"]) * 
+                get_dmg_exp(storm_data[row, "PROPDMGEXP"])
+}
+economic_damage <- storm_data2 %>% 
+        mutate(TOTAL_LOSS = total_loss) %>% 
+        group_by(EVTYPE) %>% 
+        summarise(TOTAL = TOTAL_LOSS) %>%
+        arrange(desc(TOTAL))
+```
+
+List the 10 most harmful type of events with respect to economic consequences.
+
+```{r}
+head(economic_damage, 10)
+```
+
+
+```{r}
+p <- ggplot(head(economic_damage, 10), aes(x = EVTYPE, y = TOTAL)) +
+        geom_bar(stat="identity") +
+        theme_bw() +
+        labs(x = "Event type", y = "Total")
+print(p)
+```
