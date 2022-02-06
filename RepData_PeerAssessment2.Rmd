@@ -1,5 +1,5 @@
 ---
-title: 'Reproducible Research: Peer Assessment 2'
+title: 'X and Y: the most harmful events'
 author: "Hector Mario Romer"
 date: "2/5/2022"
 output: html_document
@@ -8,60 +8,98 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+## Synopsis
+The basic goal of this analysis is to explore the NOAA Storm Database and answer two questions about severe weather events. First, identify which types of events are most harmful with respect to population health. Second, which type of events have the greater economic consequences. 
+
+After inspecting the dataset, I identified the variables that would allow me to answer the questions, and applied appropriate transformations to get better results. These transformations are well documented in the body of this document. 
+
+As a result, I concluded that TORNADO events were the most harmful in terms of health. FLOOD events have the greater economic consequences. 
 
 
-## Load 
+## Data processing
+
+
+### Loads libraries and data and makes first transformation
+Required libraries are loaded. If not already present in working folder, the data file is downloaded using the supplied url link. Then, the data is loaded into the **storm_data** object.  
+
+The character variable *EVTYPE* indicates the type of event. I converted EVTYPE from character to a categorical variable (factor variable) for better handling and grouping. This resulted in 977 levels or categories.
 
 ```{r load_data, cache = TRUE}
-# suppressMessages(library(readr))
-# suppressMessages(library(dplyr))
-# suppressMessages(library(ggplot2))
-# 
-# bz_file <- "repdata_data_StormData.csv.bz2"
-# if (!file.exists(bz_file)) {
-#         download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", bz_file)
-# }
-# 
-# storm_data <- read_csv(bzfile(bz_file), show_col_types = FALSE) %>%
-#         mutate(EVTYPE = as.factor(EVTYPE))
+suppressMessages(library(readr))
+suppressMessages(library(dplyr))
+suppressMessages(library(stringr))
+suppressMessages(library(ggplot2))
+
+bz_file <- "repdata_data_StormData.csv.bz2"
+if (!file.exists(bz_file)) {
+        download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", bz_file)
+}
+
+storm_data <- read_csv(bzfile(bz_file), show_col_types = FALSE) %>%
+        mutate(EVTYPE = as.factor(EVTYPE))
 ```
 
-#### Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+Due to spelling differences, some categories are repeated. This results in too many categories which in turn causes data to be split unnecessarily. 
 
-By looking at the data documentation, I used the variables FATALITIES and INJURIES to calculate total people whose health was affected by the event. I grouped the information by event type (EVTYPE) and assigned the sum of the variables FATALITIES and INJURIES to a new variable named "TOTAL". 
+I created a new category value values based on keywords. When no match is found, it keeps the original. It is not the best approach, but it gives a better estimation.
+
+```{r}
+storm_data <- storm_data %>% mutate(EVTYPE2 = as.factor(case_when(
+        str_detect(as.character(EVTYPE), regex("avalan", ignore_case = TRUE)) ~ "AVALANCHE",
+        str_detect(as.character(EVTYPE), regex("beach ero", ignore_case = TRUE)) ~ "COASTAL FLOOD",
+        str_detect(as.character(EVTYPE), regex("blizzard", ignore_case = TRUE)) ~ "BLIZZARD",
+        str_detect(as.character(EVTYPE), regex("blowing snow", ignore_case = TRUE)) ~ "SNOW",
+        str_detect(as.character(EVTYPE), regex("coastal", ignore_case = TRUE)) ~ "COASTAL FLOOD",
+        str_detect(as.character(EVTYPE), regex("cold", ignore_case = TRUE)) ~ "COLD",
+        str_detect(as.character(EVTYPE), regex("microbust", ignore_case = TRUE)) ~ "MICROBURST",
+        str_detect(as.character(EVTYPE), regex("flash flood", ignore_case = TRUE)) ~ "FLOOD",
+        str_detect(as.character(EVTYPE), regex("flood", ignore_case = TRUE)) ~ "FLOOD",
+        str_detect(as.character(EVTYPE), regex("freez", ignore_case = TRUE)) ~ "FREEZING",
+        str_detect(as.character(EVTYPE), regex("gusty", ignore_case = TRUE)) ~ "WIND",
+        str_detect(as.character(EVTYPE), regex("hail", ignore_case = TRUE)) ~ "HAIL",
+        str_detect(as.character(EVTYPE), regex("heat", ignore_case = TRUE)) ~ "HEAT",
+        str_detect(as.character(EVTYPE), regex("heavy rain", ignore_case = TRUE)) ~ "RAIN",
+        str_detect(as.character(EVTYPE), regex("heavy snow", ignore_case = TRUE)) ~ "SNOW",
+        str_detect(as.character(EVTYPE), regex("high wind", ignore_case = TRUE)) ~ "WIND",
+        str_detect(as.character(EVTYPE), regex("hurricane", ignore_case = TRUE)) ~ "HURRICANE",
+        str_detect(as.character(EVTYPE), regex("ice", ignore_case = TRUE)) ~ "ICE",
+        str_detect(as.character(EVTYPE), regex("land", ignore_case = TRUE)) ~ "LANDSLIDE",
+        str_detect(as.character(EVTYPE), regex("lightning", ignore_case = TRUE)) ~ "LIGHTNING",
+        str_detect(as.character(EVTYPE), regex("mud", ignore_case = TRUE)) ~ "MUDSLIDE",
+        str_detect(as.character(EVTYPE), regex("precipitation", ignore_case = TRUE)) ~ "RAIN",
+        str_detect(as.character(EVTYPE), regex("record", ignore_case = TRUE)) ~ "RECORD",
+        str_detect(as.character(EVTYPE), regex("rip", ignore_case = TRUE)) ~ "RIP CURRENT",
+        str_detect(as.character(EVTYPE), regex("snow", ignore_case = TRUE)) ~ "SNOW",
+        str_detect(as.character(EVTYPE), regex("storm surge", ignore_case = TRUE)) ~ "STORM SURGE",
+        str_detect(as.character(EVTYPE), regex("summary", ignore_case = TRUE)) ~ "SUMMARY",
+        str_detect(as.character(EVTYPE), regex("thunderstorm", ignore_case = TRUE)) ~ "THUNDERSTORM",
+        str_detect(as.character(EVTYPE), regex("tornado", ignore_case = TRUE)) ~ "TORNADO",
+        str_detect(as.character(EVTYPE), regex("torrential", ignore_case = TRUE)) ~ "RAIN",
+        str_detect(as.character(EVTYPE), regex("tstm", ignore_case = TRUE)) ~ "THUNDERSTORM",
+        str_detect(as.character(EVTYPE), regex("typhoon", ignore_case = TRUE)) ~ "HURRICANE",
+        str_detect(as.character(EVTYPE), regex("water spout", ignore_case = TRUE)) ~ "WATERSPOUT",
+        str_detect(as.character(EVTYPE), regex("wind", ignore_case = TRUE)) ~ "WIND",
+        str_detect(as.character(EVTYPE), regex("winter", ignore_case = TRUE)) ~ "WINTER",
+        TRUE ~ as.character(EVTYPE)
+)))
+
+```
+
+I used the variables FATALITIES and INJURIES to calculate total people whose health was affected by the event. I grouped the information by event type 2 (EVTYPE2) and assigned the sum of the variables FATALITIES and INJURIES to a new variable named "TOTAL". 
 
 The resulting dataset, **health_damage**, is then arranged by *TOTAL* in descending order. 
 
 ```{r}
 health_damage <- storm_data %>% 
-        group_by(EVTYPE) %>% 
+        group_by(EVTYPE2) %>% 
         summarise(TOTAL = sum(FATALITIES) + sum(INJURIES)) %>%
         arrange(desc(TOTAL))
 ```
 
-List the 10 most harmful type of events with respect to population health.
+
+To measure economic consequences, I used the variables *PROPDMG* and *PROPDMGEXP* total money loss in dollars caused by the event. *PROPDMGEXP* contains character representations of the value so it requires transformations to get a numerical value. I created a function named *get_dmg_exp* wich returns the damage exponent in numerical value for a given character representation. 
 
 ```{r}
-head(health_damage, 10)
-```
-
-
-```{r}
-p <- ggplot(head(health_damage, 10), aes(x = EVTYPE, y = TOTAL)) +
-        geom_bar(stat="identity") +
-        theme_bw() +
-        labs(x = "Event type", y = "Total")
-print(p)
-```
-
-To measure economic consequences, I used the variables *PROPDMG* and *PROPDMGEXP* total money loss in dollars caused by the event. I grouped the information by event type (EVTYPE) and assigned the sum of the variables FATALITIES and INJURIES to a variable named "TOTAL". 
-
-The resulting dataset, **economic_damage**, is then arranged by *total* in descending order. 
-
-
-
-```{r}
-
 get_dmg_exp <- function(value){
         value <- as.character(value)
         
@@ -83,32 +121,57 @@ get_dmg_exp <- function(value){
         
         dmg_exp
 }
-set.seed(1307)
-sample <- sample(1:nrow(storm_data), 10000)
-storm_data2 <- storm_data[sample,]
-total_loss <- numeric(nrow(storm_data2))
+
+```
+
+I grouped the information by event type (EVTYPE2) and assigned the sum of the variable TOTAL_LOSS to a variable named TOTAL. 
+
+The resulting dataset, **economic_damage**, is then arranged by *TOTAL* in descending order. 
+
+```{r}
+
+total_loss <- numeric(nrow(storm_data))
 for (row in 1:length(total_loss)) {
-        total_loss[row] <- as.numeric(storm_data2[row, "PROPDMG"]) * 
+        total_loss[row] <- as.numeric(storm_data[row, "PROPDMG"]) * 
                 get_dmg_exp(storm_data[row, "PROPDMGEXP"])
 }
-economic_damage <- storm_data2 %>% 
-        mutate(TOTAL_LOSS = total_loss) %>% 
-        group_by(EVTYPE) %>% 
-        summarise(TOTAL = TOTAL_LOSS) %>%
+
+storm_data <- storm_data %>% 
+        mutate(TOTAL_LOSS = total_loss)
+        
+economic_damage <- storm_data %>% 
+        group_by(EVTYPE2) %>% 
+        summarise(TOTAL = sum(TOTAL_LOSS)) %>%
         arrange(desc(TOTAL))
 ```
 
-List the 10 most harmful type of events with respect to economic consequences.
 
-```{r}
-head(economic_damage, 10)
-```
+## Results
 
+#### Across the United States, which types of events are most harmful with respect to population health?
 
-```{r}
-p <- ggplot(head(economic_damage, 10), aes(x = EVTYPE, y = TOTAL)) +
+Plot the 10 most harmful type of events with respect to population health.
+
+```{r fig.width = 10}
+p <- ggplot(head(health_damage, 10), aes(x = EVTYPE2, y = TOTAL/1000)) +
         geom_bar(stat="identity") +
         theme_bw() +
-        labs(x = "Event type", y = "Total")
+        labs(x = "Event type", y = "Total (thousands of people)", title = "10 most harmful type of events with respect to population health")
 print(p)
 ```
+
+**ANSWER:** TORNADO events are the most harmful type of events with respect to population health.
+
+#### Across the United States, which types of events have the greatest economic consequences?
+
+Plot the 10 most harmful type of events with respect to economic consequences.
+
+```{r fig.width = 10}
+p <- ggplot(head(economic_damage, 10),aes(x = EVTYPE2, y = TOTAL/1000000000)) +
+        geom_bar(stat="identity") +
+        theme_bw() +
+        labs(x = "Event type", y = "Total (billions of dollars)", title = "10 most harmful type of events with respect to economic consequences.")
+print(p)
+```
+
+**ANSWER:** FLOOD events are the most harmful type of events with respect to economic consequences.
