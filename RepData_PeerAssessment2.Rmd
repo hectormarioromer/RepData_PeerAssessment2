@@ -1,5 +1,5 @@
 ---
-title: 'X and Y: the most harmful events'
+title: 'TORNADO and FLOOD: the most harmful type of events'
 author: "Hector Mario Romer"
 date: "2/5/2022"
 output: html_document
